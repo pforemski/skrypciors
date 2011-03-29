@@ -1,0 +1,43 @@
+#!/bin/bash
+
+MAX=$((3600 * 24 * 30))
+old=0
+meandiff=0
+
+function absdiff()
+{
+	arg1=$1
+	arg2=$2
+
+	d1=$((arg1 - arg2))
+	d2=$((arg2 - arg1))
+
+	if [[ $d1 -ge 0 ]]; then
+		echo $d1
+	else
+		echo $d2
+	fi
+}
+
+git log | tac | sed -re '/^Date:/!d' -e 's;^Date:[ ]+(.*) (\+|-)[0-9]+;\1;g' | \
+while read line; do
+	s=`date -d "$line" +%s`
+
+	[[ $old -gt 0 ]] && {
+		diff=$((s - old))
+
+		if [[ $diff -gt 0 ]]; then
+			meandiff=$(((meandiff + diff) / 2))
+
+			if [[ `absdiff $diff $meandiff` -lt $MAX ]]; then
+				echo $diff
+			else
+				echo $MAX
+			fi
+		else
+			echo 0
+		fi
+	}
+
+	old=$s
+done | gnuplot -e "plot '-' with steps title 'laziness'; pause mouse"
